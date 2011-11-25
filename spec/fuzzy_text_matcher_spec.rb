@@ -44,4 +44,11 @@ describe FuzzyTextMatcher do
     end
     @matcher.make_fuzzy_search_regex_public("foo").source.should == "^(.*?)(f)([^/]*?)(o)([^/]*?)(o)(.*)$"
   end
+  
+  it "works with the name retriever block" do
+    class CountryObject < Struct.new(:country_name, :country_id); end
+    objects = @@TEST_COUNTRIES.collect { |c| CountryObject.new(c, c.object_id) }
+    object_matcher = FuzzyTextMatcher.new(objects, &Proc.new { |m| m.country_name })
+    object_matcher.find("US").should have(2).items
+  end
 end

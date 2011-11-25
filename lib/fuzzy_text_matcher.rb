@@ -1,6 +1,8 @@
 # FuzzyTextMatcher is a simplified version of jamis' FuzzyFileFinder (https://github.com/jamis/fuzzy_file_finder), 
 # which is itself an implementation of TextMate's "cmd-T" functionality. 
-# FuzzyTextMatcher looks for non-contiguous pattern matches against a given list of strings.
+# FuzzyTextMatcher looks for non-contiguous pattern matches against a given list of strings.  You can also pass
+# in a list of objects, along with a block that defines how to get from object to name, and use this class
+# to do fuzzy matching on a list of named objects.
 # 
 # Usage:
 # 
@@ -28,9 +30,13 @@ class FuzzyTextMatcher
   # The list of terms to search through.
   attr_reader :dictionary
 
-  # Initializes a new FuzzyTextMatcher with the given terms as the dictionary
-  def initialize(dictionary)
+  # Initializes a new FuzzyTextMatcher with the given terms as the dictionary.
+  # By default, these terms are expected to be strings to match against.  However, if they are
+  # objects that have a field which should be matched against, a block can be passed in that
+  # defines how to get from an object to the name.  As an example, 
+  def initialize(dictionary, &name_retriever)
     @dictionary = dictionary
+    @name_retriever = name_retriever || Proc.new{ |m| m }
   end
 
   # Takes the given pattern (which must be a string) and searches the dictionary for matches.
@@ -61,6 +67,15 @@ class FuzzyTextMatcher
     end
     results
   end
+  
+  def find_sorted(pattern, max=nil)
+    results = find(pattern).sort_by { |m| [-m[:score], m[:name]] }
+    if max
+      results.first(max)
+    else
+      results
+    end
+  end
 
   # Displays the finder object in a sane, non-explosive manner.
   def inspect #:nodoc:
@@ -87,10 +102,11 @@ class FuzzyTextMatcher
   
   # Match entry against the regex. If it matches, yield the match metadata to the block.
   def match_entry(entry, regex, &block)
-    if match = entry.match(regex)
+    if match = @name_retriever.call(entry).match(regex)
       match_result = build_match_result(match)
 
-      result = { :name => entry,
+      result = { :object => entry,
+                 :name => @name_retriever.call(entry),
                  :highlighted_name => match_result[:runs].join,
                  :runs => match_result[:runs],
                  :score => match_result[:score] 
@@ -99,24 +115,6 @@ class FuzzyTextMatcher
     end
   end
   
-  # Determine the score of this match.
-  # 1. Fewer "inside runs" (runs corresponding to the original pattern) is better.
-  # 2. Better coverage of the actual word is better
-  def calculate_score(entry, runs)
-    inside_runs = runs.select { |r| r.inside }
-    inside_chars = inside_runs.collect { |r| r.string.length }.reduce(:+)
-    total_chars = runs.collect { |r| r.string.length }.reduce(:+)
-    
-    # Item 1 above, fewer runs (i.e. more contiguous matches) is better.
-    run_ratio = 1.0 / inside_runs.length
-    # Item 2 above, a higher ratio of characters in the search to characters in the term is better.
-    char_ratio = inside_chars.to_f / total_chars
-
-    # Score is the product of these ratios.
-    run_ratio * char_ratio
-  end
-  
-
   # Given a MatchData object match, compute both the match score and the highlighted match string. 
   def build_match_result(match)
     runs = []
@@ -135,6 +133,23 @@ class FuzzyTextMatcher
     end
     
     score = calculate_score(match.string, runs)
-    return { :score => score, :runs => runs }
+    { :score => score, :runs => runs }
+  end
+  
+  # Determine the score of this match.
+  # 1. Fewer "inside runs" (runs corresponding to the original pattern) is better.
+  # 2. Better coverage of the actual word is better
+  def calculate_score(entry, runs)
+    inside_runs = runs.select { |r| r.inside }
+    inside_chars = inside_runs.collect { |r| r.string.length }.reduce(:+)
+    total_chars = runs.collect { |r| r.string.length }.reduce(:+)
+    
+    # Item 1 above, fewer runs (i.e. more contiguous matches) is better.
+    run_ratio = 1.0 / inside_runs.length
+    # Item 2 above, a higher ratio of characters in the search to characters in the term is better.
+    char_ratio = inside_chars.to_f / total_chars
+
+    # Score is the product of these ratios.
+    run_ratio * char_ratio
   end
 end
