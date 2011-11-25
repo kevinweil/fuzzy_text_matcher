@@ -6,6 +6,7 @@ FuzzyTextMatcher is a simplified version of jamis' FuzzyFileFinder (https://gith
 
 * Quickly search a list of entries for a non-contiguous pattern, e.g. in a list of countries "us" will match Ru(ss)ia, Hond(u)ra(s), (U)nited (S)tates, (U)zbeki(s)tan, etc.
 * Simple highlighting of matches to discover how a pattern matched
+* Instead of passing in a list of strings, you can also pass in a list of objects along with a proc defining how to name each object, and you can fuzzy match against of a list of objects.
 
 == SYNOPSIS:
 
