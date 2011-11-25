@@ -42,6 +42,8 @@ class FuzzyTextMatcher
   # * :score refers to a value between 0 and 1 indicating how closely the file matches the given pattern. 
   # A score of 1 means the pattern matches the file exactly.
   def search(pattern, &block)
+    return if (pattern.nil? || pattern.empty?)
+    
     regex = make_fuzzy_search_regex(pattern)
 
     dictionary.each do |entry|
@@ -68,8 +70,8 @@ class FuzzyTextMatcher
   private
 
   # Takes the given pattern string "foo" and converts it to a new string 
-  # "(f)([^/]*?)(o)([^/]*?)(o)" 
-  # that can be used to create a regular expression.
+  # "^(.*?)(f)([^/]*?)(o)([^/]*?)(o)(.*)$"
+  # before returning the corresponding case-insensitive regular expression.
   def make_fuzzy_search_regex(pattern)
     pattern_chars = pattern.split(//)
     pattern_chars << "" if pattern.empty?
@@ -83,23 +85,35 @@ class FuzzyTextMatcher
     Regexp.new(regex_raw, Regexp::IGNORECASE)
   end
   
-  # TODO document
+  # Match entry against the regex. If it matches, yield the match metadata to the block.
+  def match_entry(entry, regex, &block)
+    if match = entry.match(regex)
+      match_result = build_match_result(match)
+
+      result = { :name => entry,
+                 :highlighted_name => match_result[:runs].join,
+                 :runs => match_result[:runs],
+                 :score => match_result[:score] 
+               }
+      yield result
+    end
+  end
+  
+  # Determine the score of this match.
+  # 1. Fewer "inside runs" (runs corresponding to the original pattern) is better.
+  # 2. Better coverage of the actual word is better
   def calculate_score(entry, runs)
-    
-    
-    # Determine the score of this match.
-    # 1. fewer "inside runs" (runs corresponding to the original pattern)
-    #    is better.
-    # 2. better coverage of the actual path name is better
-
     inside_runs = runs.select { |r| r.inside }
-    inside_chars = inside_runs.inject(0) { |sum, run| sum + run.string.length }
-    total_chars = runs.inject(0) { |sum, run| sum + run.string.length }
+    inside_chars = inside_runs.collect { |r| r.string.length }.reduce(:+)
+    total_chars = runs.collect { |r| r.string.length }.reduce(:+)
     
-    run_ratio = inside_runs.length.zero? ? 1 : 1 / inside_runs.length.to_f
-    char_ratio = total_chars.zero? ? 1 : inside_chars.to_f / total_chars
+    # Item 1 above, fewer runs (i.e. more contiguous matches) is better.
+    run_ratio = 1.0 / inside_runs.length
+    # Item 2 above, a higher ratio of characters in the search to characters in the term is better.
+    char_ratio = inside_chars.to_f / total_chars
 
-    score = run_ratio * char_ratio
+    # Score is the product of these ratios.
+    run_ratio * char_ratio
   end
   
 
@@ -122,19 +136,5 @@ class FuzzyTextMatcher
     
     score = calculate_score(match.string, runs)
     return { :score => score, :runs => runs }
-  end
-
-  # Match entry against the regex. If it matches, yield the match metadata to the block.
-  def match_entry(entry, regex, &block)
-    if match = entry.match(regex)
-      match_result = build_match_result(match)
-
-      result = { :name => entry,
-                 :highlighted_name => match_result[:runs].join,
-                 :runs => match_result[:runs],
-                 :score => match_result[:score] 
-               }
-      yield result
-    end
   end
 end
