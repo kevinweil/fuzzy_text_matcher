@@ -1,0 +1,34 @@
+= FuzzyTextMatcher
+
+FuzzyTextMatcher is a simplified version of jamis' FuzzyFileFinder (https://github.com/jamis/fuzzy_file_finder), which is itself an implementation of TextMate's "cmd-T" functionality. FuzzyFileFinder allows you to search for a file by specifying a pattern of characters that appear in that file's name. FuzzyTextMatcher simplifies that to match against a given list of strings, removing all the directory- and file-related code.
+
+== FEATURES:
+
+* Quickly search a list of entries for a non-contiguous pattern, e.g. in a list of countries "us" will match Ru(ss)ia, Hond(u)ra(s), (U)nited (S)tates, (U)zbeki(s)tan, etc.
+* Simple highlighting of matches to discover how a pattern matched
+
+== SYNOPSIS:
+
+In a nutshell:
+
+  require 'fuzzy_text_matcher'
+  matcher = FuzzyTextMatcher.new(["United States", "Canada", "Mexico", "Honduras"])
+
+  matcher.search("us") do |match|
+    puts "[%5d] %s" % [match[:score] * 10000, match[:highlighted_name]]
+  end
+
+  results = matcher.find("us").sort_by { |m| [-m[:score], m[:name]] }
+  results.each do |match|
+    puts "[%5d] %s" % [match[:score] * 10000, match[:highlighted_name]]
+  end
+
+See FuzzyTextMatcher for more documentation, and links to further information.
+
+== INSTALL:
+
+* gem install --source=http://gems.github.com kevinweil-fuzzy_text_matcher
+
+== LICENSE:
+
+All code, documentation, and related materials in this project are released into the PUBLIC DOMAIN. Usage, modification, and distribution are allowed without restriction.
