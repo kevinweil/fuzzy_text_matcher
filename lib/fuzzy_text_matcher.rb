@@ -1,11 +1,11 @@
-# FuzzyTextMatcher is a simplified version of jamis' FuzzyFileFinder (https://github.com/jamis/fuzzy_file_finder), 
-# which is itself an implementation of TextMate's "cmd-T" functionality. 
+# FuzzyTextMatcher is a simplified version of jamis' FuzzyFileFinder (https://github.com/jamis/fuzzy_file_finder),
+# which is itself an implementation of TextMate's "cmd-T" functionality.
 # FuzzyTextMatcher looks for non-contiguous pattern matches against a given list of strings.  You can also pass
 # in a list of objects, along with a block that defines how to get from object to name, and use this class
 # to do fuzzy matching on a list of named objects.
-# 
+#
 # Usage:
-# 
+#
 #   matcher = FuzzyTextMatcher.new(["United States", "Canada", "Mexico", "Honduras"])
 #   matcher.search("us") do |match|
 #     puts "[%5d] %s" % [match[:score] * 10000, match[:highlighted_name]]
@@ -15,7 +15,7 @@
 
 class FuzzyTextMatcher
 
-  # Used internally to represent a run of characters within a match. This is used to 
+  # Used internally to represent a run of characters within a match. This is used to
   # build the highlighted version of a file name.
   class CharacterRun < Struct.new(:string, :inside)
     def to_s
@@ -33,7 +33,7 @@ class FuzzyTextMatcher
   # Initializes a new FuzzyTextMatcher with the given terms as the dictionary.
   # By default, these terms are expected to be strings to match against.  However, if they are
   # objects that have a field which should be matched against, a block can be passed in that
-  # defines how to get from an object to the name.  As an example, 
+  # defines how to get from an object to the name.  As an example,
   def initialize(dictionary, &name_retriever)
     @dictionary = dictionary
     @name_retriever = name_retriever || Proc.new{ |m| m }
@@ -45,11 +45,11 @@ class FuzzyTextMatcher
   # Each yielded match will be a hash containing the following keys:
   # * :name refers to the name of the matched term in the dictionary
   # * :highlighted_name refers to the name of the matched term with matches highlighted in parentheses
-  # * :score refers to a value between 0 and 1 indicating how closely the file matches the given pattern. 
+  # * :score refers to a value between 0 and 1 indicating how closely the file matches the given pattern.
   # A score of 1 means the pattern matches the file exactly.
   def search(pattern, &block)
     return if (pattern.nil? || pattern.empty?)
-    
+
     regex = make_fuzzy_search_regex(pattern)
 
     dictionary.each do |entry|
@@ -57,7 +57,7 @@ class FuzzyTextMatcher
     end
   end
 
-  # Takes the given pattern (which must be a string, formatted as described in #search), and returns up to 
+  # Takes the given pattern (which must be a string, formatted as described in #search), and returns up to
   # max matches in an array. If max is nil, all matches will be returned.
   def find(pattern, max=nil)
     results = []
@@ -67,7 +67,7 @@ class FuzzyTextMatcher
     end
     results
   end
-  
+
   def find_sorted(pattern, max=nil)
     results = find(pattern).sort_by { |m| [-m[:score], m[:name]] }
     if max
@@ -84,22 +84,22 @@ class FuzzyTextMatcher
 
   private
 
-  # Takes the given pattern string "foo" and converts it to a new string 
+  # Takes the given pattern string "foo" and converts it to a new string
   # "^(.*?)(f)([^/]*?)(o)([^/]*?)(o)(.*)$"
   # before returning the corresponding case-insensitive regular expression.
   def make_fuzzy_search_regex(pattern)
     pattern_chars = pattern.split(//)
     pattern_chars << "" if pattern.empty?
-    
+
     pattern_regex_raw = pattern_chars.inject("") do |regex, character|
       regex << "([^/]*?)" if regex.length > 0
       regex << "(" << Regexp.escape(character) << ")"
     end
-    
+
     regex_raw = "^(.*?)" << pattern_regex_raw << "(.*)$"
     Regexp.new(regex_raw, Regexp::IGNORECASE)
   end
-  
+
   # Match entry against the regex. If it matches, yield the match metadata to the block.
   def match_entry(entry, regex, &block)
     if match = @name_retriever.call(entry).match(regex)
@@ -109,13 +109,13 @@ class FuzzyTextMatcher
                  :name => @name_retriever.call(entry),
                  :highlighted_name => match_result[:runs].join,
                  :runs => match_result[:runs],
-                 :score => match_result[:score] 
+                 :score => match_result[:score]
                }
       yield result
     end
   end
-  
-  # Given a MatchData object match, compute both the match score and the highlighted match string. 
+
+  # Given a MatchData object match, compute both the match score and the highlighted match string.
   def build_match_result(match)
     runs = []
     match.captures.each_with_index do |capture, index|
@@ -131,11 +131,11 @@ class FuzzyTextMatcher
         end
       end
     end
-    
+
     score = calculate_score(match.string, runs)
     { :score => score, :runs => runs }
   end
-  
+
   # Determine the score of this match.
   # 1. Fewer "inside runs" (runs corresponding to the original pattern) is better.
   # 2. Better coverage of the actual word is better
@@ -143,7 +143,7 @@ class FuzzyTextMatcher
     inside_runs = runs.select { |r| r.inside }
     inside_chars = inside_runs.collect { |r| r.string.length }.reduce(:+)
     total_chars = runs.collect { |r| r.string.length }.reduce(:+)
-    
+
     # Item 1 above, fewer runs (i.e. more contiguous matches) is better.
     run_ratio = 1.0 / inside_runs.length
     # Item 2 above, a higher ratio of characters in the search to characters in the term is better.
