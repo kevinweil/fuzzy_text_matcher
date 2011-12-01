@@ -33,7 +33,8 @@ class FuzzyTextMatcher
   # Initializes a new FuzzyTextMatcher with the given terms as the dictionary.
   # By default, these terms are expected to be strings to match against.  However, if they are
   # objects that have a field which should be matched against, a block can be passed in that
-  # defines how to get from an object to the name.  As an example,
+  # defines how to get from an object to the name.  As an example, see countries_as_objects.rb
+  # in the examples dir.
   def initialize(dictionary, &name_retriever)
     @dictionary = dictionary
     @name_retriever = name_retriever || Proc.new{ |m| m }
@@ -77,22 +78,16 @@ class FuzzyTextMatcher
     end
   end
 
-  # Displays the finder object in a sane, non-explosive manner.
-  def inspect #:nodoc:
-    "#<%s:0x%x dictionary=%d>" % [self.class.name, object_id, dictionary.length]
-  end
-
   private
 
   # Takes the given pattern string "foo" and converts it to a new string
-  # "^(.*?)(f)([^/]*?)(o)([^/]*?)(o)(.*)$"
+  # "^(.*?)(f)(.*?)(o)(.*?)(o)(.*)$"
   # before returning the corresponding case-insensitive regular expression.
   def make_fuzzy_search_regex(pattern)
     pattern_chars = pattern.split(//)
-    pattern_chars << "" if pattern.empty?
 
     pattern_regex_raw = pattern_chars.inject("") do |regex, character|
-      regex << "([^/]*?)" if regex.length > 0
+      regex << "(.*?)" if regex.length > 0
       regex << "(" << Regexp.escape(character) << ")"
     end
 

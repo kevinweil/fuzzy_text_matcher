@@ -7,7 +7,9 @@ describe FuzzyTextMatcher do
   end
 
   it "finds two countries for US" do
-    @matcher.find("US").should have(2).items
+    results = @matcher.find("US")
+    results.should have(2).items
+    results.collect { |m| m[:name] }.should =~ ["United States", "Russia"]
   end
 
   it "is case-insensitive" do
@@ -16,13 +18,13 @@ describe FuzzyTextMatcher do
 
   it "finds the two countries with Z" do
     countries_with_z = @matcher.find("z").collect { |m| m[:name] }.compact
-    countries_with_z.should == ["Brazil", "Belize"]
+    countries_with_z.should =~ ["Brazil", "Belize"]
   end
 
   it "should rank consecutive runs higher than separated characters" do
     countries_with_ta = @matcher.find("at")
-    usa = countries_with_ta.select { |m| m[:name] == "United States" }.first
-    argentina = countries_with_ta.select { |m| m[:name] == "Argentina" }.first
+    usa = countries_with_ta.find { |m| m[:name] == "United States" }
+    argentina = countries_with_ta.find { |m| m[:name] == "Argentina" }
     usa[:score].should be > argentina[:score]
   end
 
@@ -42,7 +44,7 @@ describe FuzzyTextMatcher do
     def @matcher.make_fuzzy_search_regex_public(*args)
       make_fuzzy_search_regex(*args)
     end
-    @matcher.make_fuzzy_search_regex_public("foo").source.should == "^(.*?)(f)([^/]*?)(o)([^/]*?)(o)(.*)$"
+    @matcher.make_fuzzy_search_regex_public("foo").source.should == "^(.*?)(f)(.*?)(o)(.*?)(o)(.*)$"
   end
 
   it "works with the name retriever block" do
